@@ -1,0 +1,687 @@
+/* ── Reset & Base ────────────────────────────────────────────────────── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Backgrounds */
+    --bg: #F5F0E8;
+    --bg-card: #FFFFFF;
+    --bg-active: #FFF5ED;
+    --bg-hover: #F0EAE0;
+
+    /* Accent: Terracotta */
+    --accent: #C4654A;
+    --accent-light: #E8967E;
+    --accent-subtle: rgba(196, 101, 74, 0.10);
+    --accent-glow: rgba(196, 101, 74, 0.15);
+
+    /* Text */
+    --text: #2D2A26;
+    --text-dim: #8A8279;
+    --text-light: #B0A99F;
+
+    /* Jyutping: Deep Teal */
+    --jyutping: #2A7C6F;
+
+    /* Structural */
+    --border: #E5DED4;
+    --shadow: rgba(45, 42, 38, 0.06);
+    --shadow-md: rgba(45, 42, 38, 0.10);
+    --radius: 14px;
+    --radius-pill: 999px;
+}
+
+html, body {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+#header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg);
+    padding: 16px 20px;
+    box-shadow: 0 1px 0 var(--border);
+}
+
+#logo {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+
+#logo span {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    font-weight: 400;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-left: 6px;
+    letter-spacing: 0.02em;
+}
+
+/* ── Views ──────────────────────────────────────────────────────────── */
+.view {
+    display: none;
+    padding: 0 20px 100px; /* extra bottom for playback bar */
+}
+.view.active {
+    display: block;
+}
+
+/* ── Search ─────────────────────────────────────────────────────────── */
+.search-bar {
+    display: flex;
+    gap: 10px;
+    padding: 16px 0;
+    position: sticky;
+    top: 56px;
+    z-index: 90;
+    background: var(--bg);
+}
+
+.search-bar input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 12px 20px;
+    color: var(--text);
+    font-size: 16px;  /* ≥16px prevents iOS auto-zoom on focus */
+    font-family: inherit;
+    outline: none;
+    -webkit-appearance: none; /* reset iOS default input style */
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar input::placeholder {
+    color: var(--text-light);
+}
+
+.search-bar input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.search-bar button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 12px 18px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-bar button:active {
+    background: var(--accent-light);
+}
+
+/* ── Results ────────────────────────────────────────────────────────── */
+.results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.result-card {
+    display: flex;
+    gap: 14px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 3px var(--shadow);
+}
+
+.result-card:active {
+    background: var(--bg-hover);
+    box-shadow: 0 2px 8px var(--shadow-md);
+}
+
+.result-card img {
+    width: 110px;
+    height: 62px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.result-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.result-info h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.result-info p {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+
+.empty-state {
+    text-align: left;
+    padding: 0;
+    color: var(--text-dim);
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+#hero {
+    padding: 32px 0 28px;
+    text-align: center;
+}
+
+.hero-tagline {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.04em;
+}
+
+.hero-sub {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+}
+
+/* ── Featured Songs ────────────────────────────────────────────────── */
+#featured {
+    padding-bottom: 20px;
+}
+
+.section-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 14px;
+}
+
+#featured-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.featured-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s;
+    box-shadow: 0 1px 3px var(--shadow);
+}
+
+.featured-card:active {
+    background: var(--bg-hover);
+}
+
+.featured-char {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-subtle);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.featured-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.featured-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+}
+
+.featured-artist {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+/* ── Song View ──────────────────────────────────────────────────────── */
+#back-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 12px 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.2s;
+}
+
+#back-btn:active {
+    color: var(--accent-light);
+}
+
+/* ── YouTube Player ─────────────────────────────────────────────────── */
+#player-section {
+    margin: 0 -20px;
+}
+
+#player-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background: #000;
+}
+
+#youtube-player {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#player-sentinel {
+    height: 0;
+}
+
+/* ── Song Info ───────────────────────────────────────────────────────── */
+#song-info {
+    padding: 20px 0 12px;
+}
+
+#song-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+}
+
+#song-artist {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+
+/* ── Lyrics Container ───────────────────────────────────────────────── */
+#lyrics-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 40px;
+}
+
+.lyric-line {
+    padding: 12px 14px;
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+}
+
+.lyric-line:active {
+    background: var(--bg-hover);
+}
+
+.lyric-line .line-speaker {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.4;
+    padding: 12px; /* min 44px touch target */
+    transition: opacity 0.2s;
+}
+
+.lyric-line .line-speaker:active {
+    opacity: 0.8;
+}
+
+.lyric-line.active .line-speaker {
+    opacity: 0.7;
+}
+
+/* ── Jyutping + Characters ──────────────────────────────────────────── */
+.chars-row {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: flex-end;
+}
+
+.char-block {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    min-width: 1.4em;
+}
+
+.char-block:active {
+    background: rgba(42, 124, 111, 0.12);
+}
+
+.char-block .jyutping {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 400;
+    color: var(--jyutping);
+    line-height: 1.2;
+    white-space: nowrap;
+    min-height: 0.75rem;
+    letter-spacing: 0.01em;
+    opacity: 0.85;
+}
+
+.char-block .hanzi {
+    font-size: 1.2rem;
+    line-height: 1.4;
+    color: var(--text);
+}
+
+.char-block.punct {
+    cursor: default;
+    min-width: auto;
+    padding: 3px 0;
+}
+
+/* Active line: soft highlighter on the whole sentence */
+.lyric-line.active .chars-row {
+    background: rgba(196, 101, 74, 0.10);
+    border-radius: 6px;
+    padding: 4px 6px;
+    margin: -4px -6px;
+}
+
+.lyric-line.active .char-block .jyutping {
+    opacity: 1;
+    color: var(--accent);
+}
+
+/* ── Manual Lyrics ──────────────────────────────────────────────────── */
+#manual-lyrics-section {
+    padding: 24px 0;
+}
+
+#manual-lyrics-section p {
+    margin-bottom: 10px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+#manual-lyrics-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#manual-lyrics-input::placeholder {
+    color: var(--text-light);
+}
+
+#manual-lyrics-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+#manual-lyrics-section button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-pill);
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#manual-lyrics-section button:active {
+    background: var(--accent-light);
+}
+
+/* ── Loading ────────────────────────────────────────────────────────── */
+.hidden {
+    display: none !important;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#lyrics-loading {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-dim);
+}
+
+/* ── Playback Bar ───────────────────────────────────────────────────── */
+#playback-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+#progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    cursor: pointer;
+}
+
+#progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.3s linear;
+}
+
+#playback-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 10px 20px;
+}
+
+#playback-controls button {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 8px;
+    color: var(--text);
+    transition: color 0.2s;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#playback-controls button:active {
+    color: var(--accent);
+}
+
+#playback-controls #pb-play {
+    background: var(--text);
+    color: var(--bg-card);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+}
+
+#playback-controls #pb-play svg {
+    fill: var(--bg-card);
+}
+
+#playback-controls #pb-play:active {
+    background: var(--accent);
+}
+
+#pb-time {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    min-width: 40px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 4px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+/* ── Desktop / Wide Screen ─────────────────────────────────────────── */
+@media (min-width: 768px) {
+    #header {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 16px 0;
+    }
+    .view {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    #player-section {
+        margin: 0;
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+    #player-container {
+        padding-bottom: 40%; /* shorter on desktop, not full 16:9 */
+        border-radius: var(--radius);
+    }
+    #playback-bar {
+        max-width: 600px;
+        margin: 0 auto;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .featured-card {
+        transition: background 0.15s, box-shadow 0.15s;
+    }
+    .featured-card:hover {
+        box-shadow: 0 2px 12px var(--shadow-md);
+    }
+    .result-card {
+        transition: background 0.2s, box-shadow 0.2s;
+    }
+    .result-card:hover {
+        box-shadow: 0 2px 12px var(--shadow-md);
+        background: var(--bg-hover);
+    }
+}
+
+/* ── Small Screen (iPhone SE etc.) ──────────────────────────────────── */
+@media (max-width: 374px) {
+    .view {
+        padding: 0 14px 80px;
+    }
+    #header {
+        padding: 14px;
+    }
+    #player-section {
+        margin: 0 -14px;
+    }
+    .result-card img {
+        width: 88px;
+        height: 50px;
+    }
+    .char-block .hanzi {
+        font-size: 1.1rem;
+    }
+    .search-bar {
+        top: 48px;
+    }
+}
+
+/* ── iOS Fixes ─────────────────────────────────────────────────────── */
+#manual-lyrics-input {
+    -webkit-appearance: none;
+}
+
+/* ── Safe Area (notch devices) ──────────────────────────────────────── */
+@supports (padding-top: env(safe-area-inset-top)) {
+    #header {
+        padding-top: calc(16px + env(safe-area-inset-top));
+    }
+    .view {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+}

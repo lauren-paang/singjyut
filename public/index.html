@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#F5F0E8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>聲粵 SingJyut</title>
+    <link rel="manifest" href="/public/manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/public/style.css?v=8">
+</head>
+<body>
+    <!-- Header -->
+    <header id="header">
+        <h1 id="logo" onclick="showSearch()">聲粵 <span>SingJyut</span></h1>
+    </header>
+
+    <!-- Search View -->
+    <div id="search-view" class="view active">
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="搜尋粵語歌 Search Cantonese songs..."
+                   enterkeyhint="search" autocomplete="off">
+            <button id="search-btn" onclick="doSearch()">🔍</button>
+        </div>
+        <div id="results-list" class="results-list"></div>
+        <div id="search-empty" class="empty-state">
+            <!-- Hero -->
+            <div id="hero">
+                <p class="hero-tagline">唱住學粵語</p>
+                <p class="hero-sub">Learn Cantonese through songs</p>
+            </div>
+            <!-- Featured Songs -->
+            <div id="featured">
+                <h2 class="section-title">熱門粵語歌</h2>
+                <div id="featured-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Song View -->
+    <div id="song-view" class="view">
+        <!-- Back button -->
+        <button id="back-btn" onclick="showSearch()">← Back</button>
+
+        <!-- YouTube Player -->
+        <div id="player-section">
+            <div id="player-container">
+                <div id="youtube-player"></div>
+            </div>
+        </div>
+        <!-- Sentinel: when this scrolls out, video becomes mini-player -->
+        <div id="player-sentinel"></div>
+
+        <!-- Song Info -->
+        <div id="song-info">
+            <h2 id="song-title"></h2>
+            <p id="song-artist"></p>
+        </div>
+
+        <!-- Lyrics with Jyutping -->
+        <div id="lyrics-container"></div>
+
+        <!-- Manual Lyrics Fallback -->
+        <div id="manual-lyrics-section" class="hidden">
+            <p>Lyrics not found. Paste them below:</p>
+            <textarea id="manual-lyrics-input" placeholder="Paste lyrics here..." rows="8"></textarea>
+            <button onclick="submitManualLyrics()">Annotate with Jyutping</button>
+        </div>
+
+        <!-- Loading -->
+        <div id="lyrics-loading" class="hidden">
+            <div class="spinner"></div>
+            <p>Loading lyrics & Jyutping...</p>
+        </div>
+    </div>
+
+    <!-- Playback Bar (fixed bottom, only visible in song view) -->
+    <div id="playback-bar" class="hidden">
+        <div id="progress-bar">
+            <div id="progress-fill"></div>
+        </div>
+        <div id="playback-controls">
+            <button id="pb-prev" onclick="Playback.prev()" aria-label="Previous">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <button id="pb-play" onclick="Playback.toggle()" aria-label="Play">
+                <svg id="pb-play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button id="pb-next" onclick="Playback.next()" aria-label="Next">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z"/></svg>
+            </button>
+            <span id="pb-time">0:00</span>
+        </div>
+    </div>
+
+    <script src="/public/tts.js?v=8"></script>
+    <script src="/public/youtube-player.js?v=8"></script>
+    <script src="/public/karaoke.js?v=8"></script>
+    <script src="/public/app.js?v=8"></script>
+    <script>
+        // Force unregister old service workers and clear caches
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => r.unregister());
+            });
+            caches.keys().then(keys => {
+                keys.forEach(k => caches.delete(k));
+            });
+        }
+    </script>
+</body>
+</html>
