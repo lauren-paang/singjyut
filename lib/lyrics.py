@@ -48,11 +48,12 @@ def _search_term(title: str, artist: str) -> str:
     return " ".join(part.strip() for part in (title, artist) if part and part.strip())
 
 
-def _search(term: str, allow_plain_format: bool = False) -> str | None:
+def _search(term: str) -> str | None:
+    """Synced LRC if any provider has it, else plain lyrics, else None."""
     try:
-        return syncedlyrics.search(term, allow_plain_format=allow_plain_format)
-    except Exception:
-        logger.exception("syncedlyrics search failed for %r", term)
+        return syncedlyrics.search(term)
+    except Exception as exc:
+        logger.warning("syncedlyrics search failed for %r: %s", term, exc)
         return None
 
 
@@ -100,11 +101,9 @@ def search_lyrics(title: str, artist: str) -> dict:
         return {"found": True, "synced": cached.get("synced", False), "source": "cache"}
 
     term = _search_term(title, artist)
-    if term:
-        if _search(term):
-            return {"found": True, "synced": True, "source": "syncedlyrics"}
-        if _search(term, allow_plain_format=True):
-            return {"found": True, "synced": False, "source": "syncedlyrics"}
+    lrc = _search(term) if term else None
+    if lrc:
+        return {"found": True, "synced": bool(_parse_lrc(lrc)), "source": "syncedlyrics"}
     return {"found": False, "synced": False, "source": None}
 
 
@@ -115,9 +114,7 @@ def fetch_lyrics(title: str, artist: str) -> dict:
         return cached
 
     term = _search_term(title, artist)
-    lrc = None
-    if term:
-        lrc = _search(term) or _search(term, allow_plain_format=True)
+    lrc = _search(term) if term else None
 
     parsed = _parse_lrc(lrc) if lrc else []
     synced = bool(parsed)

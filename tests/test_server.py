@@ -159,7 +159,7 @@ def test_lyrics_fetch(client, lyrics_provider):
 
 def test_lyrics_fetch_artist_is_optional(client, lyrics_provider):
     client.post("/api/lyrics/fetch", json={"title": "海闊天空"})
-    assert lyrics_provider.calls[0] == ("海闊天空", False)
+    assert lyrics_provider.calls[0] == "海闊天空"
 
 
 def test_lyrics_search(client, lyrics_provider):

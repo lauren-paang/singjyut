@@ -2,6 +2,7 @@ import httpx
 import pytest
 import syncedlyrics
 
+from fake_lyrics import LyricsProvider
 from lib import config
 
 
@@ -12,24 +13,6 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "YOUTUBE_API_KEY", "")
     monkeypatch.setattr(config, "GOOGLE_TTS_KEY", "")
     return config
-
-
-class LyricsProvider:
-    """Stand-in for syncedlyrics.search; records every call."""
-
-    def __init__(self):
-        self.calls = []
-        self.synced = None   # returned for synced-only searches
-        self.plain = None    # returned when allow_plain_format=True
-        self.error = None
-
-    def __call__(self, term, allow_plain_format=False, **kwargs):
-        self.calls.append((term, allow_plain_format))
-        if self.error:
-            raise self.error
-        if allow_plain_format:
-            return self.synced or self.plain
-        return self.synced
 
 
 @pytest.fixture(autouse=True)

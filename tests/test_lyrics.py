@@ -1,7 +1,9 @@
+import inspect
 import json
 
 import pytest
 
+from fake_lyrics import REAL_SEARCH, LyricsProvider
 from lib import lyrics
 
 LRC = """[ar:Beyond]
@@ -64,6 +66,13 @@ def test_parse_plain_skips_section_tags():
     ]
 
 
+def test_lyrics_provider_matches_syncedlyrics():
+    # syncedlyrics 1.0 renamed search() arguments; keep the fake honest.
+    real = inspect.signature(REAL_SEARCH)
+    fake = inspect.signature(LyricsProvider.__call__)
+    assert list(fake.parameters)[1:] == list(real.parameters)
+
+
 # ── fetch_lyrics ────────────────────────────────────────────────────────────
 
 
@@ -76,7 +85,7 @@ def test_fetch_synced_lyrics_annotates_and_caches(lyrics_provider, isolated_conf
     assert result["title"] == "海闊天空" and result["artist"] == "Beyond"
     assert [line["time"] for line in result["lines"]] == [32.5, 37.2]
     assert result["lines"][0]["chars"][0] == {"char": "今", "jyutping": "gam1"}
-    assert lyrics_provider.calls == [("海闊天空 Beyond", False)]
+    assert lyrics_provider.calls == ["海闊天空 Beyond"]
 
     cache_files = list((isolated_config.DATA_DIR / "lyrics_cache").glob("*.json"))
     assert len(cache_files) == 1
@@ -97,7 +106,7 @@ def test_fetch_falls_back_to_plain_lyrics(lyrics_provider):
         (None, "今天我"),
         (None, "寒冷的站在"),
     ]
-    assert lyrics_provider.calls == [("海闊天空", False), ("海闊天空", True)]
+    assert lyrics_provider.calls == ["海闊天空"]  # one search covers synced and plain
 
 
 def test_misses_are_not_cached(lyrics_provider, isolated_config):

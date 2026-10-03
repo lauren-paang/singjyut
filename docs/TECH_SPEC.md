@@ -6,7 +6,7 @@
 |-------|--------|-----------|
 | Backend | FastAPI (Python 3.11+) | Direct access to ToJyutping + syncedlyrics Python libraries |
 | Jyutping | ToJyutping 3.2.0 | 99% accuracy, returns char-aligned `(char, jyutping)` tuples |
-| Lyrics | syncedlyrics 0.10.1 | Fetches time-stamped LRC from Musixmatch/NetEase/Lrclib |
+| Lyrics | syncedlyrics 1.0.1 | Fetches time-stamped LRC from Musixmatch/NetEase/Lrclib |
 | TTS | Google Cloud TTS API | `yue-HK-Standard-A` voice for Cantonese |
 | Music | YouTube IFrame API | Free embed, `getCurrentTime()` for karaoke sync |
 | Search | YouTube Data API v3 | In-app search with music category filter (videoCategoryId: 10), 10K quota units/day free |
