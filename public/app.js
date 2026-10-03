@@ -3,6 +3,8 @@
 let currentSongData = null;
 let karaokeLines = [];
 let searchResults = [];
+let searchSeq = 0;     // only the latest search may render
+let songLoadId = 0;    // bumps on every song change; stale lyric loads are dropped
 
 // ── Featured Songs ──────────────────────────────────────────────────────────
 
@@ -22,10 +24,10 @@ function renderFeatured() {
     if (!grid) return;
     grid.innerHTML = FEATURED_SONGS.map((s, i) => `
         <div class="featured-card" data-index="${i}">
-            <span class="featured-char">${s.title[0]}</span>
+            <span class="featured-char">${escapeHtml(s.title[0])}</span>
             <div class="featured-text">
-                <span class="featured-title">${s.title}</span>
-                <span class="featured-artist">${s.artist}</span>
+                <span class="featured-title">${escapeHtml(s.title)}</span>
+                <span class="featured-artist">${escapeHtml(s.artist)}</span>
             </div>
         </div>
     `).join('');
@@ -49,31 +51,42 @@ searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') doSearch();
 });
 
+function searchMessage(text) {
+    return `<div class="empty-state search-message"><p>${escapeHtml(text)}</p></div>`;
+}
+
 async function doSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
 
+    const seq = ++searchSeq;
     const resultsList = document.getElementById('results-list');
     const emptyState = document.getElementById('search-empty');
 
+    // Messages go into the results list; #search-empty holds the hero and
+    // featured songs and must survive a failed search.
     resultsList.innerHTML = '<div class="empty-state"><div class="spinner"></div><p>Searching...</p></div>';
     emptyState.classList.add('hidden');
 
     try {
         const resp = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
+        if (seq !== searchSeq) return;
 
+        if (data.error) {
+            resultsList.innerHTML = searchMessage(data.error);
+            return;
+        }
         if (!data.results || data.results.length === 0) {
-            resultsList.innerHTML = '';
-            emptyState.innerHTML = '<p>No results found. Try a different search.</p>';
-            emptyState.classList.remove('hidden');
+            resultsList.innerHTML = searchMessage('No results found. Try a different search.');
             return;
         }
 
         searchResults = data.results;
         resultsList.innerHTML = data.results.map((r, i) => `
             <div class="result-card" data-index="${i}">
-                <img src="${r.thumbnail}" alt="" loading="lazy">
+                <img src="${escapeHtml(r.thumbnail)}" alt="" loading="lazy">
                 <div class="result-info">
                     <h3>${escapeHtml(r.title)}</h3>
                     <p>${escapeHtml(r.channelTitle)}</p>
@@ -88,25 +101,66 @@ async function doSearch() {
             });
         });
     } catch (err) {
-        resultsList.innerHTML = `<div class="empty-state"><p>Search failed: ${err.message}</p></div>`;
+        if (seq !== searchSeq) return;
+        resultsList.innerHTML = searchMessage(`Search failed: ${err.message}`);
     }
 }
+
+// ── Player Events ───────────────────────────────────────────────────────────
+
+// Registered once, so play/pause works even before lyrics finish loading.
+YTPlayer.onStateChange((state) => {
+    if (state === YT.PlayerState.PLAYING) {
+        Karaoke.start();
+        Playback.updatePlayBtn(true);
+    } else if (state === YT.PlayerState.ENDED) {
+        Karaoke.stop();
+        Playback.updatePlayBtn(false);
+    } else if (state !== YT.PlayerState.BUFFERING) {
+        Karaoke.pause();
+        Playback.updatePlayBtn(false);
+    }
+});
+
+YTPlayer.onError((code) => {
+    const messages = {
+        100: 'This video was removed or is private.',
+        101: "This video can't be played outside YouTube. Go back and pick another result.",
+        150: "This video can't be played outside YouTube. Go back and pick another result.",
+    };
+    const el = document.getElementById('player-error');
+    el.textContent = messages[code] || 'The video failed to load. Go back and pick another result.';
+    el.classList.remove('hidden');
+});
 
 // ── Song Selection ──────────────────────────────────────────────────────────
 
 async function selectSong(videoId, title, artist) {
+    const loadId = ++songLoadId;
+
     document.getElementById('search-view').classList.remove('active');
     document.getElementById('song-view').classList.add('active');
+    window.scrollTo(0, 0);
 
-    const decodedTitle = decodeHtmlEntities(title);
-    document.getElementById('song-title').textContent = decodedTitle;
+    document.getElementById('song-title').textContent = title;
     document.getElementById('song-artist').textContent = artist;
+    document.getElementById('player-error').classList.add('hidden');
+
+    // Forget the previous song before anything async happens
+    currentSongData = null;
+    karaokeLines = [];
+    Karaoke.stop();
+    Karaoke.setLines([]);
+    TTS.stop();
 
     // Show playback bar
     document.getElementById('playback-bar').classList.remove('hidden');
+    Playback.reset();
+    Playback.startProgress();
 
     // Load YouTube video
     YTPlayer.loadVideo(videoId);
+    saveRecentSong(videoId, title, artist);
 
     // Show loading
     const lyricsContainer = document.getElementById('lyrics-container');
@@ -118,18 +172,22 @@ async function selectSong(videoId, title, artist) {
     manualSection.classList.add('hidden');
 
     // Extract title/artist for lyrics search
-    const cleanTitle = extractSongInfo(decodedTitle);
+    const songInfo = extractSongInfo(title);
     const userQuery = searchInput.value.trim();
 
     // Try multiple search strategies
-    let data = null;
     const attempts = [
-        { title: cleanTitle.title, artist: cleanTitle.artist || artist },
+        { title: songInfo.title, artist: songInfo.artist || artist },
         { title: userQuery, artist: '' },
-        { title: decodedTitle, artist: '' },
+        { title: title, artist: '' },
     ];
+    const tried = new Set();
+    let data = null;
 
     for (const attempt of attempts) {
+        const key = `${attempt.title}|${attempt.artist}`.toLowerCase();
+        if (!attempt.title || tried.has(key)) continue;
+        tried.add(key);
         try {
             const resp = await fetch('/api/lyrics/fetch', {
                 method: 'POST',
@@ -139,37 +197,23 @@ async function selectSong(videoId, title, artist) {
             const result = await resp.json();
             if (result.lines && result.lines.length > 0) {
                 data = result;
-                break;
             }
         } catch (err) {
             // try next
         }
+        // The user picked another song (or went back) meanwhile.
+        if (loadId !== songLoadId) return;
+        if (data) break;
     }
 
     currentSongData = data;
     lyricsLoading.classList.add('hidden');
 
-    if (data && data.lines && data.lines.length > 0) {
+    if (data) {
         renderLyrics(data);
     } else {
         manualSection.classList.remove('hidden');
     }
-
-    // Karaoke sync: always active when video plays
-    YTPlayer.onStateChange((state) => {
-        if (state === YT.PlayerState.PLAYING) {
-            Karaoke.start(karaokeLines);
-            Playback.updatePlayBtn(true);
-        } else if (state === YT.PlayerState.PAUSED || state === YT.PlayerState.ENDED) {
-            Karaoke.stop();
-            Playback.updatePlayBtn(false);
-        }
-    });
-
-    // Start playback bar progress updates
-    Playback.startProgress();
-
-    saveRecentSong(videoId, title, artist);
 }
 
 // ── Lyrics Rendering ────────────────────────────────────────────────────────
@@ -189,8 +233,14 @@ function renderLyrics(data) {
 
         line.chars.forEach(c => {
             const block = document.createElement('span');
-            const isPunct = !c.jyutping;
 
+            if (!c.char.trim()) {
+                block.className = 'char-block space';
+                charsRow.appendChild(block);
+                return;
+            }
+
+            const isPunct = !c.jyutping;
             block.className = 'char-block' + (isPunct ? ' punct' : '');
 
             if (!isPunct) {
@@ -222,6 +272,7 @@ function renderLyrics(data) {
         const speakerBtn = document.createElement('button');
         speakerBtn.className = 'line-speaker';
         speakerBtn.textContent = '🔊';
+        speakerBtn.setAttribute('aria-label', 'Read line aloud');
         speakerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             TTS.speak(line.text);
@@ -242,6 +293,9 @@ function renderLyrics(data) {
             element: lineEl,
         });
     });
+
+    // Highlights right away if the video is already playing.
+    Karaoke.setLines(karaokeLines);
 }
 
 // ── Manual Lyrics ───────────────────────────────────────────────────────────
@@ -250,6 +304,7 @@ async function submitManualLyrics() {
     const text = document.getElementById('manual-lyrics-input').value.trim();
     if (!text) return;
 
+    const loadId = songLoadId;
     const lyricsLoading = document.getElementById('lyrics-loading');
     const manualSection = document.getElementById('manual-lyrics-section');
 
@@ -262,12 +317,15 @@ async function submitManualLyrics() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
         });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
+        if (loadId !== songLoadId) return;
         currentSongData = data;
 
         lyricsLoading.classList.add('hidden');
         renderLyrics(data);
     } catch (err) {
+        if (loadId !== songLoadId) return;
         lyricsLoading.classList.add('hidden');
         manualSection.classList.remove('hidden');
     }
@@ -286,48 +344,66 @@ const Playback = (() => {
         }
     }
 
-    function prev() {
-        // Find the current active line index, jump to previous
-        const activeIdx = Karaoke.getActiveIndex();
-        const target = activeIdx > 0 ? activeIdx - 1 : 0;
-        if (karaokeLines[target] && karaokeLines[target].time !== null) {
-            YTPlayer.seekTo(karaokeLines[target].time);
+    // Line index at the current playback position. Derived from the player
+    // time rather than the karaoke highlight, which is idle while paused.
+    // The small lead absorbs seek imprecision so "next" never repeats a line.
+    function currentLineIndex() {
+        return Karaoke.indexAt(YTPlayer.getCurrentTime() + 0.3);
+    }
+
+    function seekToLine(index) {
+        const line = karaokeLines[index];
+        if (line && line.time !== null) {
+            YTPlayer.seekTo(line.time);
         }
     }
 
+    function prev() {
+        const idx = currentLineIndex();
+        seekToLine(idx > 0 ? idx - 1 : 0);
+    }
+
     function next() {
-        const activeIdx = Karaoke.getActiveIndex();
-        const target = activeIdx + 1;
-        if (target < karaokeLines.length && karaokeLines[target] && karaokeLines[target].time !== null) {
-            YTPlayer.seekTo(karaokeLines[target].time);
-        }
+        seekToLine(currentLineIndex() + 1);
     }
 
     function updatePlayBtn(playing) {
         const icon = document.getElementById('pb-play-icon');
+        const btn = document.getElementById('pb-play');
         if (playing) {
             // Pause icon
             icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            btn.setAttribute('aria-label', 'Pause');
         } else {
             // Play icon
             icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            btn.setAttribute('aria-label', 'Play');
         }
+    }
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function render(current, duration) {
+        const pct = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('pb-time').textContent = formatTime(current);
+    }
+
+    function reset() {
+        render(0, 0);
+        updatePlayBtn(false);
     }
 
     function startProgress() {
         stopProgress();
         progressInterval = setInterval(() => {
-            const current = YTPlayer.getCurrentTime();
             const duration = YTPlayer.getDuration();
             if (duration > 0) {
-                const pct = (current / duration) * 100;
-                document.getElementById('progress-fill').style.width = pct + '%';
-
-                // Update time display
-                const mins = Math.floor(current / 60);
-                const secs = Math.floor(current % 60);
-                document.getElementById('pb-time').textContent =
-                    `${mins}:${secs.toString().padStart(2, '0')}`;
+                render(YTPlayer.getCurrentTime(), duration);
             }
         }, 500);
     }
@@ -339,7 +415,7 @@ const Playback = (() => {
         }
     }
 
-    return { toggle, prev, next, updatePlayBtn, startProgress, stopProgress };
+    return { toggle, prev, next, updatePlayBtn, reset, startProgress, stopProgress };
 })();
 
 // ── Progress bar seek ───────────────────────────────────────────────────────
@@ -347,20 +423,50 @@ const Playback = (() => {
 document.getElementById('progress-bar').addEventListener('click', (e) => {
     const bar = e.currentTarget;
     const rect = bar.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
+    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const duration = YTPlayer.getDuration();
     if (duration > 0) {
         YTPlayer.seekTo(pct * duration);
     }
 });
 
+// ── Mini-Player ─────────────────────────────────────────────────────────────
+// When the video scrolls out of view under the header, pin it to the
+// top-right corner so it stays visible while reading lyrics.
+
+const MiniPlayer = (() => {
+    const container = document.getElementById('player-container');
+    const sentinel = document.getElementById('player-sentinel');
+    const songView = document.getElementById('song-view');
+    const header = document.getElementById('header');
+
+    function set(mini) {
+        container.classList.toggle('mini', mini);
+    }
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(([entry]) => {
+            const rootTop = entry.rootBounds ? entry.rootBounds.top : 0;
+            const scrolledPast = !entry.isIntersecting && entry.boundingClientRect.top < rootTop;
+            set(songView.classList.contains('active') && scrolledPast);
+        }, { rootMargin: `-${header.offsetHeight}px 0px 0px 0px` });
+        observer.observe(sentinel);
+    }
+
+    return { reset: () => set(false) };
+})();
+
 // ── Navigation ──────────────────────────────────────────────────────────────
 
 function showSearch() {
+    songLoadId++;   // abandon any lyrics load still in flight
+    YTPlayer.stop();
+    MiniPlayer.reset();
     document.getElementById('song-view').classList.remove('active');
     document.getElementById('search-view').classList.add('active');
     document.getElementById('playback-bar').classList.add('hidden');
     // Reset search view: clear results, show featured
+    searchSeq++;
     document.getElementById('results-list').innerHTML = '';
     document.getElementById('search-empty').classList.remove('hidden');
     renderFeatured();
@@ -371,24 +477,36 @@ function showSearch() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+// Safe for both element content and quoted attribute values. (Function
+// declarations are hoisted; renderFeatured() calls this at load.)
 function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    const escapes = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(str ?? '').replace(/[&<>"']/g, c => escapes[c]);
 }
 
-function decodeHtmlEntities(str) {
-    const txt = document.createElement('textarea');
-    txt.innerHTML = str;
-    return txt.value;
+// Bracketed noise in YouTube titles: (Official MV) [HD] 【歌詞】 （高清）
+const TITLE_NOISE = /[(\[【（][^)\]】）]*[)\]】）]/g;
+const TITLE_NOISE_WORDS = /\b(official|music|lyrics?|video|mv|hd|4k)\b/gi;
+
+function tidyTitlePart(str) {
+    return str.replace(TITLE_NOISE, ' ').replace(TITLE_NOISE_WORDS, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function extractSongInfo(youtubeTitle) {
-    const parts = youtubeTitle.split(/[-–—]/).map(s => s.trim());
+    const raw = youtubeTitle.trim();
+
+    // 陳奕迅 Eason Chan《富士山下》[Official MV]: title is inside 《》「」『』
+    const quoted = raw.match(/[《「『]([^》」』]+)[》」』]/);
+    if (quoted) {
+        return { title: quoted[1].trim(), artist: tidyTitlePart(raw.slice(0, quoted.index)) };
+    }
+
+    // Beyond - 海闊天空 (Official MV)
+    const parts = tidyTitlePart(raw).split(/\s*[-–—|｜]\s*/).filter(Boolean);
     if (parts.length >= 2) {
         return { artist: parts[0], title: parts.slice(1).join(' ') };
     }
-    return { title: youtubeTitle, artist: '' };
+    return { title: parts[0] || raw, artist: '' };
 }
 
 // ── Recent Songs (localStorage) ─────────────────────────────────────────────

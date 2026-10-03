@@ -7,35 +7,45 @@ const Karaoke = (() => {
     let activeIndex = -1;
     let offset = 0;       // timing offset in seconds
 
-    function start(lyricLines) {
-        stop();
-        lines = lyricLines;
-        activeIndex = -1;
-        interval = setInterval(tick, 200);
+    function setLines(lyricLines) {
+        lines = lyricLines || [];
+        clearHighlight();
+        if (interval) tick();
     }
 
-    function stop() {
+    function start(lyricLines) {
+        if (lyricLines) setLines(lyricLines);
+        if (interval) clearInterval(interval);
+        interval = setInterval(tick, 200);
+        tick();
+    }
+
+    // Stop polling but keep the current line highlighted (paused video).
+    function pause() {
         if (interval) {
             clearInterval(interval);
             interval = null;
         }
+    }
+
+    function stop() {
+        pause();
         clearHighlight();
     }
 
-    function tick() {
-        if (!YTPlayer.isPlaying()) return;
-
-        const currentTime = YTPlayer.getCurrentTime() + offset;
-        let newIndex = -1;
-
-        // Find the last line whose time <= currentTime
+    // Index of the last line whose time <= `time`, or -1.
+    function indexAt(time) {
+        const t = time + offset;
         for (let i = lines.length - 1; i >= 0; i--) {
-            if (lines[i].time !== null && lines[i].time <= currentTime) {
-                newIndex = i;
-                break;
+            if (lines[i].time !== null && lines[i].time <= t) {
+                return i;
             }
         }
+        return -1;
+    }
 
+    function tick() {
+        const newIndex = indexAt(YTPlayer.getCurrentTime());
         if (newIndex !== activeIndex) {
             activeIndex = newIndex;
             highlightLine(activeIndex);
@@ -72,5 +82,5 @@ const Karaoke = (() => {
         return activeIndex;
     }
 
-    return { start, stop, setOffset, getActiveIndex };
+    return { start, pause, stop, setLines, indexAt, setOffset, getActiveIndex };
 })();

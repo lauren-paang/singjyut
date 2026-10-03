@@ -5,7 +5,7 @@
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
 | Backend | FastAPI (Python 3.11+) | Direct access to ToJyutping + syncedlyrics Python libraries |
-| Jyutping | ToJyutping 1.1.0 | 99% accuracy, returns char-aligned `(char, jyutping)` tuples |
+| Jyutping | ToJyutping 3.2.0 | 99% accuracy, returns char-aligned `(char, jyutping)` tuples |
 | Lyrics | syncedlyrics 0.10.1 | Fetches time-stamped LRC from Musixmatch/NetEase/Lrclib |
 | TTS | Google Cloud TTS API | `yue-HK-Standard-A` voice for Cantonese |
 | Music | YouTube IFrame API | Free embed, `getCurrentTime()` for karaoke sync |
@@ -16,6 +16,15 @@
 | Deployment | Render free tier | Auto-deploy from GitHub, public URL |
 
 ## 2. API Specification
+
+### GET /api/health
+
+Liveness check. Reports which API keys are configured.
+
+**Response:**
+```json
+{"status": "ok", "youtube": true, "tts": true}
+```
 
 ### GET /api/youtube/search
 
@@ -133,6 +142,23 @@ Generate Cantonese TTS audio.
 }
 ```
 
+`text` is limited to 200 characters and `voice` must be a `yue-HK-*` voice.
+On failure the response is `{"audio": null, "error": "..."}`.
+
+### POST /api/lyrics/manual
+
+Annotate pasted lyrics. Plain text gives unsynced lines (`"time": null`);
+pasted LRC keeps its timestamps.
+
+**Request:**
+```json
+{
+  "text": "今天我\n寒冷的站在"
+}
+```
+
+**Response:** same shape as `/api/lyrics/fetch`, with `"title": "Manual Lyrics"`.
+
 ## 3. LRC Format Parsing
 
 Time-stamped LRC format: `[mm:ss.xx]lyrics text`
@@ -142,9 +168,16 @@ Time-stamped LRC format: `[mm:ss.xx]lyrics text`
 [00:37.20]飄過的是你的那一瞥
 ```
 
-Parser regex: `/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/`
+Accepted timestamps: `[mm:ss.xx]`, `[mm:ss.xxx]`, `[m:ss]`, `[mm:ss:xx]`.
+A line may carry several timestamps (`[00:20.00][01:30.00]副歌`, a repeated
+chorus) and yields one entry per timestamp; entries are sorted by time.
+Word-level `<mm:ss.xx>` tags and metadata lines (`[ar:...]`) are dropped.
 
-Time calculation: `minutes * 60 + seconds + centiseconds / 100`
+Time calculation: `minutes * 60 + seconds + fraction`, where the fraction digits
+are read as a decimal (`.5` = 0.5s, `.50` = 0.5s, `.500` = 0.5s).
+
+If a provider only has plain (unsynced) lyrics, each non-empty line becomes an
+entry with `"time": null` and the response has `"synced": false`.
 
 ## 4. Karaoke Sync Algorithm
 
@@ -176,11 +209,7 @@ setInterval(() => {
 5. Free tier: spins down after 15 min inactivity (~30s cold start)
 
 ### Docker (Alternative)
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+
+See the `Dockerfile`: `python:3.11-slim`, non-root user, listens on `$PORT`
+(default 8000), `HEALTHCHECK` on `/api/health`. `.dockerignore` keeps `.env`,
+caches and tests out of the image.

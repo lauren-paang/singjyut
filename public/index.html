@@ -8,10 +8,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>聲粵 SingJyut</title>
     <link rel="manifest" href="/public/manifest.json">
+    <link rel="icon" type="image/png" href="/public/icon-192.png">
+    <link rel="apple-touch-icon" href="/public/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/public/style.css?v=8">
+    <link rel="stylesheet" href="/public/style.css?v=9">
 </head>
 <body>
     <!-- Header -->
@@ -54,6 +56,7 @@
         </div>
         <!-- Sentinel: when this scrolls out, video becomes mini-player -->
         <div id="player-sentinel"></div>
+        <p id="player-error" class="hidden" role="alert"></p>
 
         <!-- Song Info -->
         <div id="song-info">
@@ -97,10 +100,10 @@
         </div>
     </div>
 
-    <script src="/public/tts.js?v=8"></script>
-    <script src="/public/youtube-player.js?v=8"></script>
-    <script src="/public/karaoke.js?v=8"></script>
-    <script src="/public/app.js?v=8"></script>
+    <script src="/public/tts.js?v=9"></script>
+    <script src="/public/youtube-player.js?v=9"></script>
+    <script src="/public/karaoke.js?v=9"></script>
+    <script src="/public/app.js?v=9"></script>
     <script>
         // Force unregister old service workers and clear caches
         if ('serviceWorker' in navigator) {

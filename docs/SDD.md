@@ -10,6 +10,8 @@ Mobile Browser / PWA
   ├── POST /api/lyrics/fetch    → fetch LRC + annotate with Jyutping
   ├── POST /api/tts             → Google Cloud TTS proxy (yue-HK)
   ├── POST /api/jyutping        → text → Jyutping conversion
+  ├── POST /api/lyrics/manual   → annotate pasted lyrics (plain text or LRC)
+  ├── GET  /api/health          → liveness + configured keys
   │
 FastAPI (Python)
   ├── ToJyutping                → character → Jyutping mapping
@@ -83,8 +85,8 @@ TTS Flow:
 
 ## 4. Caching Strategy
 
-- **Lyrics cache**: Server-side file cache in `data/lyrics_cache/` (by song hash)
-- **TTS cache**: Client-side in-memory Map (per session)
+- **Lyrics cache**: Server-side file cache in `$DATA_DIR/lyrics_cache/` (by song hash). Only hits are cached, so a song that isn't found yet is searched again next time.
+- **TTS cache**: Server-side file cache in `$DATA_DIR/tts_cache/` (by voice + text) to save API quota, plus a client-side in-memory Map (per session)
 - **Jyutping**: No cache needed — ToJyutping runs in-process, ~1ms per line
 
 ## 5. Performance Targets

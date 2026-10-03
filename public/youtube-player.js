@@ -4,7 +4,9 @@
 const YTPlayer = (() => {
     let player = null;
     let ready = false;
+    let pendingVideoId = null;   // requested before the API finished loading
     let onStateChangeCb = null;
+    let onErrorCb = null;
 
     function init() {
         if (window.YT && window.YT.Player) {
@@ -18,6 +20,10 @@ const YTPlayer = (() => {
 
     window.onYouTubeIframeAPIReady = () => {
         ready = true;
+        if (pendingVideoId && !player) {
+            createPlayer(pendingVideoId);
+            pendingVideoId = null;
+        }
     };
 
     function loadVideo(videoId) {
@@ -27,12 +33,8 @@ const YTPlayer = (() => {
         }
 
         if (!ready) {
-            const check = setInterval(() => {
-                if (ready) {
-                    clearInterval(check);
-                    createPlayer(videoId);
-                }
-            }, 100);
+            // Only the latest request matters; onYouTubeIframeAPIReady picks it up.
+            pendingVideoId = videoId;
             return;
         }
 
@@ -46,17 +48,19 @@ const YTPlayer = (() => {
                 playsinline: 1,
                 rel: 0,
                 fs: 0,
+                origin: window.location.origin,
             },
             events: {
-                onReady: (e) => {
+                onReady: () => {
                     console.log('[YTPlayer] ready');
                 },
                 onStateChange: (e) => {
                     if (onStateChangeCb) onStateChangeCb(e.data);
                 },
                 onError: (e) => {
-                    console.error('[YTPlayer] error code:', e.data);
                     // 2=invalid param, 5=HTML5 error, 100=not found, 101/150=embed blocked
+                    console.error('[YTPlayer] error code:', e.data);
+                    if (onErrorCb) onErrorCb(e.data);
                 },
             },
         });
@@ -64,14 +68,14 @@ const YTPlayer = (() => {
 
     function getCurrentTime() {
         if (player && typeof player.getCurrentTime === 'function') {
-            return player.getCurrentTime();
+            return player.getCurrentTime() || 0;
         }
         return 0;
     }
 
     function getDuration() {
         if (player && typeof player.getDuration === 'function') {
-            return player.getDuration();
+            return player.getDuration() || 0;
         }
         return 0;
     }
@@ -95,8 +99,19 @@ const YTPlayer = (() => {
         }
     }
 
+    // Leaving the song view: stop playback and drop a video still waiting
+    // for the API to load.
+    function stop() {
+        pendingVideoId = null;
+        pause();
+    }
+
     function onStateChange(cb) {
         onStateChangeCb = cb;
+    }
+
+    function onError(cb) {
+        onErrorCb = cb;
     }
 
     function seekTo(seconds) {
@@ -106,7 +121,7 @@ const YTPlayer = (() => {
         }
     }
 
-    return { init, loadVideo, getCurrentTime, getDuration, isPlaying, play, pause, seekTo, onStateChange };
+    return { init, loadVideo, getCurrentTime, getDuration, isPlaying, play, pause, stop, seekTo, onStateChange, onError };
 })();
 
 YTPlayer.init();

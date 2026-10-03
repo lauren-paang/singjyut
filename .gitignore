@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 data/
 __pycache__/
 *.pyc
@@ -9,3 +11,5 @@ build/
 .venv/
 venv/
 .syncedlyrics/
+.pytest_cache/
+test-results/
